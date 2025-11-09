@@ -1,0 +1,97 @@
+{
+  "id": "teams-notifications",
+  "name": "Microsoft Teams Notifications",
+  "version": "1.0.0",
+  "description": "Send notifications via Microsoft Teams channels and chats using Microsoft Graph API",
+  "author": "Kiket",
+  "license": "MIT",
+  "repository": "https://github.com/kiket-dev/kiket-ext-teams",
+  "capabilities": {
+    "notification_delivery": true,
+    "supports_channels": true,
+    "supports_dm": true,
+    "supports_group_chat": true,
+    "supports_rich_formatting": true,
+    "supports_attachments": true,
+    "supports_threading": true,
+    "supports_adaptive_cards": true
+  },
+  "endpoints": [
+    {
+      "id": "send_notification",
+      "path": "/notify",
+      "method": "POST",
+      "description": "Send a notification to Microsoft Teams"
+    },
+    {
+      "id": "validate_channel",
+      "path": "/validate",
+      "method": "POST",
+      "description": "Validate Teams channel/user configuration"
+    },
+    {
+      "id": "health_check",
+      "path": "/health",
+      "method": "GET",
+      "description": "Health check endpoint"
+    }
+  ],
+  "configuration": {
+    "secrets": [
+      {
+        "key": "TEAMS_TENANT_ID",
+        "description": "Microsoft Entra ID (Azure AD) Tenant ID",
+        "required": true
+      },
+      {
+        "key": "TEAMS_CLIENT_ID",
+        "description": "Microsoft Entra ID Application (Client) ID",
+        "required": true
+      },
+      {
+        "key": "TEAMS_CLIENT_SECRET",
+        "description": "Microsoft Entra ID Client Secret",
+        "required": true
+      }
+    ],
+    "settings": [
+      {
+        "key": "default_message_format",
+        "description": "Default message format (html or plain)",
+        "default": "html",
+        "type": "string"
+      },
+      {
+        "key": "retry_attempts",
+        "description": "Number of retry attempts for failed deliveries",
+        "default": "3",
+        "type": "integer"
+      },
+      {
+        "key": "timeout_seconds",
+        "description": "Request timeout in seconds",
+        "default": "30",
+        "type": "integer"
+      }
+    ]
+  },
+  "billing": {
+    "model": "usage",
+    "metrics": [
+      {
+        "id": "notifications_sent",
+        "name": "Notifications Sent",
+        "unit": "notification",
+        "description": "Number of notifications successfully delivered"
+      }
+    ]
+  },
+  "tags": [
+    "notification",
+    "chat",
+    "teams",
+    "microsoft",
+    "communication",
+    "team-collaboration"
+  ]
+}
