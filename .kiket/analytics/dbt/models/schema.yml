@@ -1,0 +1,5 @@
+version: 2
+
+models:
+  - name: teams_metrics_daily
+    description: "Daily Teams delivery metrics by channel"

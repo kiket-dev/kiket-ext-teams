@@ -1,0 +1,34 @@
+name: "Microsoft Teams Delivery Overview"
+description: "Teams message delivery metrics"
+refresh_interval: 300
+
+sections:
+  - name: "Summary Metrics"
+    layout: "grid"
+    columns: 3
+    widgets:
+      - type: "metric"
+        title: "Total Sent (30d)"
+        query: "SELECT SUM(total_sent) as value FROM teams_metrics_daily WHERE delivery_date >= CURRENT_DATE - INTERVAL '30 days'"
+      - type: "metric"
+        title: "Delivery Rate"
+        query: "SELECT ROUND(AVG(delivery_rate_pct), 1) || '%' as value FROM teams_metrics_daily WHERE delivery_date >= CURRENT_DATE - INTERVAL '30 days'"
+      - type: "metric"
+        title: "Active Channels"
+        query: "SELECT COUNT(DISTINCT channel_name) as value FROM teams_metrics_daily WHERE delivery_date >= CURRENT_DATE - INTERVAL '30 days'"
+
+  - name: "Channel Activity"
+    layout: "full-width"
+    widgets:
+      - type: "bar-chart"
+        title: "Top Channels by Message Volume"
+        query: |
+          SELECT
+            channel_name as name,
+            SUM(total_sent) as value
+          FROM teams_metrics_daily
+          WHERE delivery_date >= CURRENT_DATE - INTERVAL '30 days'
+          GROUP BY channel_name
+          ORDER BY value DESC
+          LIMIT 10
+        orientation: "horizontal"

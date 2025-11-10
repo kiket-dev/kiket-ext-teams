@@ -1,0 +1,6 @@
+version: 2
+
+sources:
+  - name: teams_deliveries
+    tables:
+      - name: deliveries

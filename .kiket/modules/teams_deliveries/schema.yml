@@ -1,0 +1,63 @@
+module: teams_deliveries
+version: "1.0"
+description: "Microsoft Teams message delivery tracking"
+
+tables:
+  deliveries:
+    columns:
+      - name: id
+        type: bigint
+        primary_key: true
+        auto_increment: true
+      - name: message_id
+        type: string
+        length: 255
+      - name: channel_id
+        type: string
+        length: 100
+      - name: channel_name
+        type: string
+        length: 255
+      - name: team_id
+        type: string
+        length: 100
+      - name: message_type
+        type: string
+        length: 50
+        null: false
+      - name: status
+        type: string
+        length: 50
+        null: false
+      - name: sent_at
+        type: timestamp
+      - name: failed_at
+        type: timestamp
+      - name: error_message
+        type: text
+      - name: project_id
+        type: string
+      - name: issue_id
+        type: string
+      - name: created_at
+        type: timestamp
+        null: false
+    indexes:
+      - name: idx_teams_deliveries_status
+        columns: [status]
+      - name: idx_teams_deliveries_channel
+        columns: [channel_id]
+      - name: idx_teams_deliveries_sent
+        columns: [sent_at]
+
+permissions:
+  - role: user
+    tables:
+      deliveries:
+        - read
+  - role: admin
+    tables:
+      deliveries:
+        - read
+        - write
+        - delete
