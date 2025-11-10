@@ -1,8 +1,10 @@
-FROM ruby:3.3-alpine
+FROM ruby:3.4-slim
 
 WORKDIR /app
 
-RUN apk add --no-cache build-base git tzdata
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y build-essential git tzdata && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY Gemfile ./
 RUN bundle install --without development test
