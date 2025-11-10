@@ -1,0 +1,161 @@
+model_version: "1.0"
+extension:
+  id: teams-notifications
+  name: Microsoft Teams Notifications
+  version: 1.0.0
+  description: Send notifications via Microsoft Teams channels and chats using Microsoft Graph API
+  author: Kiket Team
+  homepage: https://github.com/kiket-dev/kiket-ext-teams
+  delivery: http
+  callback:
+    url: ${EXTENSION_BASE_URL}
+    secret: env:KIKET_WEBHOOK_SECRET
+    timeout: 30000
+    required: true
+  activationEvents:
+    - issue.created
+    - issue.transitioned
+    - issue.assigned
+    - issue.commented
+    - workflow.sla_breach
+    - workflow.before_transition
+  permissions:
+    - issues:read
+    - users:read
+    - notifications:write
+    - workflows:read
+  capabilities:
+    - notifications
+    - chat
+    - direct-messages
+    - channels
+    - group-chat
+    - rich-formatting
+    - attachments
+    - threading
+    - adaptive-cards
+    - approvals
+  hooks:
+    - event: issue.created
+      timeout: 5000
+      retries: 1
+      description: Send notification when issue is created
+    - event: issue.transitioned
+      timeout: 5000
+      retries: 1
+      description: Send notification on issue state transitions
+    - event: issue.assigned
+      timeout: 5000
+      retries: 1
+      description: Notify users when assigned to issues
+    - event: issue.commented
+      timeout: 5000
+      retries: 1
+      description: Send notification for new comments
+    - event: workflow.sla_breach
+      timeout: 5000
+      retries: 2
+      description: Alert teams of SLA violations
+    - event: workflow.before_transition
+      timeout: 8000
+      retries: 1
+      description: Request approvals before workflow transitions
+  contributes:
+    commands:
+      - command: teams.sendMessage
+        title: Send Teams Message
+        description: Send a message to a Microsoft Teams channel or chat
+        category: Notifications
+        icon: bi-microsoft-teams
+        keywords: ["teams", "chat", "message", "notify", "microsoft"]
+        handler:
+          type: extension_event
+          event: teams.sendMessage
+      - command: teams.sendAdaptiveCard
+        title: Send Adaptive Card
+        description: Send a rich adaptive card to Teams
+        category: Notifications
+        icon: bi-card-text
+        keywords: ["teams", "adaptive", "card", "rich"]
+        handler:
+          type: extension_event
+          event: teams.sendAdaptiveCard
+      - command: teams.sendThreadedMessage
+        title: Send Threaded Reply
+        description: Send a threaded reply to an existing message
+        category: Notifications
+        icon: bi-chat-dots
+        keywords: ["teams", "thread", "reply", "message"]
+        handler:
+          type: extension_event
+          event: teams.sendThreadedMessage
+      - command: teams.validateChannel
+        title: Validate Teams Channel
+        description: Test Teams channel or user configuration
+        category: Settings
+        icon: bi-check-circle
+        keywords: ["teams", "validate", "test", "channel"]
+        handler:
+          type: extension_event
+          event: teams.validateChannel
+      - command: teams.requestApproval
+        title: Request Approval in Teams
+        description: Send an interactive approval request via adaptive card
+        category: Workflows
+        icon: bi-hand-thumbs-up
+        keywords: ["teams", "approval", "workflow", "request"]
+        permissions:
+          - manager
+          - executive
+        handler:
+          type: extension_event
+          event: teams.requestApproval
+  configuration:
+    TEAMS_TENANT_ID:
+      type: string
+      secret: true
+      description: Microsoft Entra ID (Azure AD) Tenant ID
+    TEAMS_CLIENT_ID:
+      type: string
+      secret: true
+      description: Microsoft Entra ID Application (Client) ID
+    TEAMS_CLIENT_SECRET:
+      type: string
+      secret: true
+      description: Microsoft Entra ID Client Secret
+    default_message_format:
+      type: string
+      default: "html"
+      description: Default message format (html or plain)
+    retry_attempts:
+      type: integer
+      default: "3"
+      description: Number of retry attempts for failed deliveries
+    timeout_seconds:
+      type: integer
+      default: "30"
+      description: Request timeout in seconds
+  assets:
+    icon: ./public/icon.svg
+
+deployment:
+  runtime: cloud_run
+  region: ${KIKET_REGION:-europe-west1}
+  image: ${TEAMS_IMAGE:-europe-west1-docker.pkg.dev/kiket-471917/kiket-extensions/kiket-ext-teams:latest}
+  resources:
+    cpu: "1"
+    memory: "512Mi"
+    concurrency: 10
+  min_instances: 0
+  max_instances: 10
+  vpc:
+    connector: ${KIKET_VPC_CONNECTOR}
+    egress: all-traffic
+  secret_keys:
+    - KIKET_WEBHOOK_SECRET
+    - TEAMS_TENANT_ID
+    - TEAMS_CLIENT_ID
+    - TEAMS_CLIENT_SECRET
+  env:
+    RACK_ENV: production
+    PORT: "8080"
