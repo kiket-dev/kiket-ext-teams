@@ -41,13 +41,13 @@ class TeamsNotificationExtension < Sinatra::Base
 
       token = acquire_access_token
       result = case payload[:channel_type]
-               when "channel"
+      when "channel"
                  send_channel_message(token, payload)
-               when "chat"
+      when "chat"
                  send_chat_message(token, payload)
-               else
+      else
                  raise ArgumentError, "Unsupported channel_type: #{payload[:channel_type]}"
-               end
+      end
 
       status 200
       {
@@ -145,7 +145,7 @@ class TeamsNotificationExtension < Sinatra::Base
     client_id = ENV["TEAMS_CLIENT_ID"]
     client_secret = ENV["TEAMS_CLIENT_SECRET"]
 
-    if [tenant_id, client_id, client_secret].any? { |value| value.to_s.strip.empty? }
+    if [ tenant_id, client_id, client_secret ].any? { |value| value.to_s.strip.empty? }
       raise ArgumentError, "Missing Teams OAuth credentials"
     end
 
@@ -270,7 +270,7 @@ class TeamsNotificationExtension < Sinatra::Base
     retry_after = response["Retry-After"]&.to_i
     message = if body.is_a?(Hash)
                 body.dig("error", "message") || body["message"]
-              end
+    end
     message ||= response.message
 
     raise TeamsAPIError.new(message, status: response.code.to_i, retry_after: retry_after)
