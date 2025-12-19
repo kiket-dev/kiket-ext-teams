@@ -118,14 +118,20 @@ extension:
     TEAMS_TENANT_ID:
       type: string
       secret: true
+      required: true
+      label: Tenant ID
       description: Microsoft Entra ID (Azure AD) Tenant ID
     TEAMS_CLIENT_ID:
       type: string
       secret: true
+      required: true
+      label: Client ID
       description: Microsoft Entra ID Application (Client) ID
     TEAMS_CLIENT_SECRET:
       type: string
       secret: true
+      required: true
+      label: Client Secret
       description: Microsoft Entra ID Client Secret
     # General Settings
     default_message_format:
