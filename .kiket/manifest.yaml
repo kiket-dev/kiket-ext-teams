@@ -150,21 +150,21 @@ extension:
     issue_created_message:
       type: template
       editor: template
-      language: handlebars
+      language: liquid
       label: Issue Created Message
       description: Teams message template for new issues
       default: |
         **New Issue Created**
 
-        **{{issue.title}}**
-        Type: {{issue.type}} | Priority: {{issue.priority}}
-        Created by: {{issue.created_by.name}}
+        **{{ issue.title }}**
+        Type: {{ issue.type }} | Priority: {{ issue.priority }}
+        Created by: {{ issue.created_by.name }}
 
-        {{#if issue.description}}
-        > {{issue.description}}
-        {{/if}}
+        {% if issue.description %}
+        > {{ issue.description }}
+        {% endif %}
 
-        [View Issue]({{issue.url}})
+        [View Issue]({{ issue.url }})
       variables:
         - name: issue
           type: object
@@ -179,18 +179,18 @@ extension:
     sla_breach_message:
       type: template
       editor: template
-      language: handlebars
+      language: liquid
       label: SLA Breach Alert Message
       description: Urgent Teams message for SLA violations
       default: |
         **SLA BREACH ALERT**
 
-        **{{issue.title}}**
-        Policy: {{sla.policy_name}}
-        Target: {{sla.target_time}} | Actual: {{sla.actual_time}}
-        **Exceeded by: {{sla.exceeded_by}}**
+        **{{ issue.title }}**
+        Policy: {{ sla.policy_name }}
+        Target: {{ sla.target_time }} | Actual: {{ sla.actual_time }}
+        **Exceeded by: {{ sla.exceeded_by }}**
 
-        [Take Action Now]({{issue.url}})
+        [Take Action Now]({{ issue.url }})
       variables:
         - name: issue
           type: object
@@ -208,19 +208,19 @@ extension:
     approval_request_message:
       type: template
       editor: template
-      language: handlebars
+      language: liquid
       label: Approval Request Message
       description: Interactive approval request message for Teams
       default: |
         **Approval Required**
 
-        **{{issue.title}}**
-        Requested by: {{requester.name}}
-        Transition: {{transition.from}} → {{transition.to}}
+        **{{ issue.title }}**
+        Requested by: {{ requester.name }}
+        Transition: {{ transition.from }} → {{ transition.to }}
 
-        {{#if reason}}
-        > {{reason}}
-        {{/if}}
+        {% if reason %}
+        > {{ reason }}
+        {% endif %}
       variables:
         - name: issue
           type: object
