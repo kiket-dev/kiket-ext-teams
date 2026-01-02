@@ -1,0 +1,13 @@
+title: Notify Teams Channel on Issue Creation
+description: Send a Teams message when new issues are created
+
+automations:
+  - name: teams_new_issue
+    trigger:
+      event: issue.created
+    actions:
+      - extension: dev.kiket.ext.teams
+        command: teams.sendMessage
+        params:
+          channel: "General"
+          template: issue_created_message
