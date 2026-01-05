@@ -237,25 +237,4 @@ extension:
           type: string
   assets:
     icon: ./public/icon.svg
-
-deployment:
-  runtime: cloud_run
-  region: ${KIKET_REGION:-europe-west1}
-  image: ${TEAMS_IMAGE:-europe-west1-docker.pkg.dev/kiket-471917/kiket-extensions/kiket-ext-teams:latest}
-  resources:
-    cpu: "1"
-    memory: "512Mi"
-    concurrency: 10
-  min_instances: 0
-  max_instances: 10
-  vpc:
-    connector: ${KIKET_VPC_CONNECTOR}
-    egress: all-traffic
-  secret_keys:
-    - KIKET_WEBHOOK_SECRET
-    - TEAMS_TENANT_ID
-    - TEAMS_CLIENT_ID
-    - TEAMS_CLIENT_SECRET
-  env:
-    RACK_ENV: production
-    PORT: "8080"
+  hosting: internal
