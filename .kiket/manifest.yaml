@@ -9,7 +9,7 @@ extension:
   delivery: http
   callback:
     url: ${EXTENSION_BASE_URL}
-    secret: env:KIKET_WEBHOOK_SECRET
+    secret: env.KIKET_WEBHOOK_SECRET
     timeout: 30000
     required: true
   activationEvents:
@@ -235,6 +235,10 @@ extension:
             - { name: to, type: string }
         - name: reason
           type: string
+  custom_data:
+    permissions:
+      - module: dev.kiket.ext.teams.deliveries
+        operations: [read, write]
   assets:
     icon: ./public/icon.svg
   hosting: internal

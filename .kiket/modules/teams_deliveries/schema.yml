@@ -1,4 +1,4 @@
-module: teams_deliveries
+module: dev.kiket.ext.teams.deliveries
 version: "1.0"
 description: "Microsoft Teams message delivery tracking"
 
