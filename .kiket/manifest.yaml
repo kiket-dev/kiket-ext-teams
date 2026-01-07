@@ -114,23 +114,26 @@ extension:
           type: extension_event
           event: teams.requestApproval
   configuration:
-    # Authentication
+    # Authentication - org-wide credentials (shared across all projects)
     TEAMS_TENANT_ID:
       type: string
       secret: true
       required: true
+      scope: extension
       label: Tenant ID
       description: Microsoft Entra ID (Azure AD) Tenant ID
     TEAMS_CLIENT_ID:
       type: string
       secret: true
       required: true
+      scope: extension
       label: Client ID
       description: Microsoft Entra ID Application (Client) ID
     TEAMS_CLIENT_SECRET:
       type: string
       secret: true
       required: true
+      scope: extension
       label: Client Secret
       description: Microsoft Entra ID Client Secret
     # General Settings
