@@ -35,6 +35,15 @@ extension:
     - threading
     - adaptive-cards
     - approvals
+  # Optional shared OAuth - if microsoft-oauth is installed, can use delegated tokens for user-specific features
+  requires:
+    oauth_provider:
+      provider: microsoft-oauth
+      scopes:
+        - Chat.ReadWrite
+        - ChannelMessage.Send
+      on_missing: ignore  # Falls back to client_credentials flow
+      optional: true
   hooks:
     - event: issue.created
       template: issue_created_message
