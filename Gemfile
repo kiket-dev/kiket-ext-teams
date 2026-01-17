@@ -2,14 +2,10 @@
 
 source "https://rubygems.org"
 
-ruby "~> 3.3"
+ruby "~> 3.4"
 
-# Web framework
-gem "sinatra", "~> 4.0"
-gem "puma", "~> 6.4"
-
-# JSON handling
-gem "json", "~> 2.7"
+# Kiket SDK for extension development
+gem "kiket-sdk", github: "kiket-dev/kiket-ruby-sdk", branch: "main"
 
 # Development and testing
 group :development, :test do
@@ -18,9 +14,4 @@ group :development, :test do
   gem "webmock", "~> 3.23"
   gem "rubocop", "~> 1.69"
   gem "dotenv", "~> 3.1"
-end
-
-# Production
-group :production do
-  gem "rack", "~> 3.1"
 end

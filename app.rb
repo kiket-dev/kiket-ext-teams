@@ -1,115 +1,19 @@
 # frozen_string_literal: true
 
-require "sinatra/base"
+require "kiket_sdk"
 require "json"
 require "net/http"
 require "uri"
 require "logger"
 require "cgi"
-require "time"
 
-class TeamsNotificationExtension < Sinatra::Base
+# Microsoft Teams Notification Extension
+# Handles sending notifications via Microsoft Graph API
+class TeamsNotificationExtension
+  REQUIRED_NOTIFY_SCOPES = %w[notifications:send].freeze
+  REQUIRED_VALIDATE_SCOPES = %w[notifications:read].freeze
+
   GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0".freeze
-
-  configure do
-    set :logging, true
-    set :logger, Logger.new($stdout)
-  end
-
-  helpers do
-    def logger
-      settings.logger
-    end
-  end
-
-  get "/health" do
-    content_type :json
-    {
-      status: "healthy",
-      service: "teams-notifications",
-      version: "1.0.0",
-      timestamp: Time.now.utc.iso8601
-    }.to_json
-  end
-
-  post "/notify" do
-    content_type :json
-
-    begin
-      payload = JSON.parse(request.body.read, symbolize_names: true)
-      validate_notification_request!(payload)
-
-      token = acquire_access_token
-      result = case payload[:channel_type]
-      when "channel"
-                 send_channel_message(token, payload)
-      when "chat"
-                 send_chat_message(token, payload)
-      else
-                 raise ArgumentError, "Unsupported channel_type: #{payload[:channel_type]}"
-      end
-
-      status 200
-      {
-        success: true,
-        message_id: result[:message_id],
-        delivered_at: Time.now.utc.iso8601
-      }.to_json
-    rescue JSON::ParserError
-      status 400
-      { success: false, error: "Invalid JSON in request body" }.to_json
-    rescue ArgumentError => e
-      status 400
-      { success: false, error: e.message }.to_json
-    rescue TeamsAPIError => e
-      status e.status || 502
-      {
-        success: false,
-        error: e.message,
-        retry_after: e.retry_after
-      }.to_json
-    rescue StandardError => e
-      logger.error "Unexpected error: #{e.message}\n#{e.backtrace&.first(10)&.join("\n")}"
-      status 500
-      { success: false, error: "Internal server error" }.to_json
-    end
-  end
-
-  post "/validate" do
-    content_type :json
-
-    begin
-      payload = JSON.parse(request.body.read, symbolize_names: true)
-      token = acquire_access_token
-
-      case payload[:channel_type]
-      when "channel"
-        validate_channel_exists(token, payload)
-      when "chat"
-        validate_chat_exists(token, payload)
-      else
-        raise ArgumentError, "Unsupported channel_type: #{payload[:channel_type]}"
-      end
-
-      status 200
-      { valid: true, message: "Configuration is valid" }.to_json
-    rescue JSON::ParserError
-      status 400
-      { valid: false, error: "Invalid JSON in request body" }.to_json
-    rescue ArgumentError => e
-      status 400
-      { valid: false, error: e.message }.to_json
-    rescue TeamsAPIError => e
-      status 200
-      { valid: false, error: e.message }.to_json
-    rescue StandardError => e
-      logger.error "Unexpected error: #{e.message}"
-      status 500
-      { valid: false, error: "Internal server error" }.to_json
-    end
-  end
-
-  private
 
   class TeamsAPIError < StandardError
     attr_reader :retry_after, :status
@@ -121,31 +25,115 @@ class TeamsNotificationExtension < Sinatra::Base
     end
   end
 
+  def initialize
+    @sdk = KiketSDK.new
+    @logger = Logger.new($stdout)
+    setup_handlers
+  end
+
+  def app
+    @sdk
+  end
+
+  private
+
+  def setup_handlers
+    # Send notification
+    @sdk.register("teams.notify", version: "v1", required_scopes: REQUIRED_NOTIFY_SCOPES) do |payload, context|
+      handle_notify(payload, context)
+    end
+
+    # Validate channel/chat configuration
+    @sdk.register("teams.validate", version: "v1", required_scopes: REQUIRED_VALIDATE_SCOPES) do |payload, context|
+      handle_validate(payload, context)
+    end
+  end
+
+  def handle_notify(payload, context)
+    validate_notification_request!(payload)
+
+    token = acquire_access_token(context)
+    result = case payload["channel_type"]
+    when "channel"
+      send_channel_message(token, payload, context)
+    when "chat"
+      send_chat_message(token, payload)
+    else
+      raise ArgumentError, "Unsupported channel_type: #{payload['channel_type']}"
+    end
+
+    context[:endpoints].log_event("teams.message.sent", {
+      channel_type: payload["channel_type"],
+      org_id: context[:auth][:org_id]
+    })
+
+    {
+      success: true,
+      message_id: result[:message_id],
+      delivered_at: Time.now.utc.iso8601
+    }
+  rescue ArgumentError => e
+    @logger.error "Validation error: #{e.message}"
+    { success: false, error: e.message }
+  rescue TeamsAPIError => e
+    @logger.error "Teams API error: #{e.message}"
+    { success: false, error: "Teams API error: #{e.message}", retry_after: e.retry_after }
+  rescue StandardError => e
+    @logger.error "Unexpected error: #{e.message}\n#{e.backtrace.join("\n")}"
+    { success: false, error: "Internal server error" }
+  end
+
+  def handle_validate(payload, context)
+    token = acquire_access_token(context)
+
+    case payload["channel_type"]
+    when "channel"
+      validate_channel_exists(token, payload, context)
+    when "chat"
+      validate_chat_exists(token, payload)
+    else
+      raise ArgumentError, "Unsupported channel_type: #{payload['channel_type']}"
+    end
+
+    { valid: true, message: "Configuration is valid" }
+  rescue ArgumentError => e
+    { valid: false, error: e.message }
+  rescue TeamsAPIError => e
+    { valid: false, error: e.message }
+  rescue StandardError => e
+    @logger.error "Unexpected error: #{e.message}"
+    { valid: false, error: "Internal server error" }
+  end
+
+  # Validation helpers
+
   def validate_notification_request!(payload)
-    message = payload[:message]
+    message = payload["message"]
     raise ArgumentError, "message is required" if message.nil? || message.to_s.strip.empty?
 
-    channel_type = payload[:channel_type]
+    channel_type = payload["channel_type"]
     raise ArgumentError, "channel_type is required" if channel_type.nil?
 
     case channel_type
     when "channel"
-      team_id = payload[:team_id] || ENV["TEAMS_DEFAULT_TEAM_ID"]
+      team_id = payload["team_id"]
       raise ArgumentError, "team_id is required for channel notifications" if team_id.to_s.strip.empty?
-      raise ArgumentError, "channel_id is required for channel notifications" if payload[:channel_id].to_s.strip.empty?
+      raise ArgumentError, "channel_id is required for channel notifications" if payload["channel_id"].to_s.strip.empty?
     when "chat"
-      raise ArgumentError, "chat_id is required for chat notifications" if payload[:chat_id].to_s.strip.empty?
+      raise ArgumentError, "chat_id is required for chat notifications" if payload["chat_id"].to_s.strip.empty?
     else
       raise ArgumentError, "Unsupported channel_type: #{channel_type}"
     end
   end
 
-  def acquire_access_token
-    tenant_id = ENV["TEAMS_TENANT_ID"]
-    client_id = ENV["TEAMS_CLIENT_ID"]
-    client_secret = ENV["TEAMS_CLIENT_SECRET"]
+  # OAuth and API methods
 
-    if [ tenant_id, client_id, client_secret ].any? { |value| value.to_s.strip.empty? }
+  def acquire_access_token(context)
+    tenant_id = context[:secret].call("TEAMS_TENANT_ID")
+    client_id = context[:secret].call("TEAMS_CLIENT_ID")
+    client_secret = context[:secret].call("TEAMS_CLIENT_SECRET")
+
+    if [tenant_id, client_id, client_secret].any? { |value| value.to_s.strip.empty? }
       raise ArgumentError, "Missing Teams OAuth credentials"
     end
 
@@ -170,47 +158,47 @@ class TeamsNotificationExtension < Sinatra::Base
     data["access_token"] || raise(TeamsAPIError, "Missing access_token in response")
   end
 
-  def send_channel_message(access_token, payload)
-    team_id = payload[:team_id] || ENV["TEAMS_DEFAULT_TEAM_ID"]
-    channel_id = payload[:channel_id]
+  def send_channel_message(token, payload, context)
+    team_id = payload["team_id"] || context[:secret].call("TEAMS_DEFAULT_TEAM_ID")
+    channel_id = payload["channel_id"]
     uri = URI("#{GRAPH_BASE_URL}/teams/#{team_id}/channels/#{channel_id}/messages")
 
-    response = post_graph_json(uri, access_token, build_message_payload(payload))
+    response = post_graph_json(uri, token, build_message_payload(payload, context))
     { message_id: response["id"] }
   end
 
-  def send_chat_message(access_token, payload)
-    chat_id = payload[:chat_id]
+  def send_chat_message(token, payload)
+    chat_id = payload["chat_id"]
     uri = URI("#{GRAPH_BASE_URL}/chats/#{chat_id}/messages")
 
-    response = post_graph_json(uri, access_token, build_message_payload(payload))
+    response = post_graph_json(uri, token, build_message_payload(payload, nil))
     { message_id: response["id"] }
   end
 
-  def validate_channel_exists(access_token, payload)
-    team_id = payload[:team_id] || ENV["TEAMS_DEFAULT_TEAM_ID"]
-    channel_id = payload[:channel_id]
+  def validate_channel_exists(token, payload, context)
+    team_id = payload["team_id"] || context[:secret].call("TEAMS_DEFAULT_TEAM_ID")
+    channel_id = payload["channel_id"]
     raise ArgumentError, "team_id and channel_id are required" if team_id.to_s.empty? || channel_id.to_s.empty?
 
     uri = URI("#{GRAPH_BASE_URL}/teams/#{team_id}/channels/#{channel_id}")
-    get_graph_json(uri, access_token)
+    get_graph_json(uri, token)
   end
 
-  def validate_chat_exists(access_token, payload)
-    chat_id = payload[:chat_id]
+  def validate_chat_exists(token, payload)
+    chat_id = payload["chat_id"]
     raise ArgumentError, "chat_id is required" if chat_id.to_s.empty?
 
     uri = URI("#{GRAPH_BASE_URL}/chats/#{chat_id}")
-    get_graph_json(uri, access_token)
+    get_graph_json(uri, token)
   end
 
-  def build_message_payload(payload)
-    format = payload[:format] || ENV.fetch("TEAMS_DEFAULT_FORMAT", "text")
+  def build_message_payload(payload, context)
+    format = payload["format"] || "text"
     {
-      subject: payload[:subject],
+      subject: payload["subject"],
       body: {
         contentType: content_type(format),
-        content: format_message(payload[:message], format)
+        content: format_message(payload["message"], format)
       }
     }.compact
   end
@@ -232,9 +220,9 @@ class TeamsNotificationExtension < Sinatra::Base
 
   def markdown_to_html(text)
     html = CGI.escapeHTML(text.to_s)
-    html.gsub(/\*\*(.*?)\*\*/) { "<strong>#{$1}</strong>" }
-        .gsub(/\*(.*?)\*/) { "<em>#{$1}</em>" }
-        .gsub(/`(.*?)`/) { "<code>#{$1}</code>" }
+    html.gsub(/\*\*(.*?)\*\*/) { "<strong>#{::Regexp.last_match(1)}</strong>" }
+        .gsub(/\*(.*?)\*/) { "<em>#{::Regexp.last_match(1)}</em>" }
+        .gsub(/`(.*?)`/) { "<code>#{::Regexp.last_match(1)}</code>" }
         .gsub(/\n/, "<br />")
   end
 
@@ -263,8 +251,10 @@ class TeamsNotificationExtension < Sinatra::Base
   end
 
   def parse_graph_response(response)
-    body = response.body.nil? || response.body.empty? ? {} : JSON.parse(response.body) rescue {}
-
+    body = response.body.nil? || response.body.empty? ? {} : JSON.parse(response.body)
+  rescue JSON::ParserError
+    body = {}
+  ensure
     return body if response.is_a?(Net::HTTPSuccess)
 
     retry_after = response["Retry-After"]&.to_i
@@ -275,4 +265,16 @@ class TeamsNotificationExtension < Sinatra::Base
 
     raise TeamsAPIError.new(message, status: response.code.to_i, retry_after: retry_after)
   end
+end
+
+# Run the extension
+if __FILE__ == $PROGRAM_NAME
+  extension = TeamsNotificationExtension.new
+
+  Rack::Handler::Puma.run(
+    extension.app,
+    Host: ENV.fetch("HOST", "0.0.0.0"),
+    Port: ENV.fetch("PORT", 8080).to_i,
+    Threads: "0:16"
+  )
 end
