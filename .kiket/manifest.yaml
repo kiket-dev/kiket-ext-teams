@@ -248,6 +248,55 @@ extension:
             - { name: to, type: string }
         - name: reason
           type: string
+  # Setup Wizard - guides users through extension configuration
+  setup:
+    # Step 1: Microsoft Entra ID Credentials
+    - secrets:
+        title: Connect to Microsoft Teams
+        description: Enter your Microsoft Entra ID (Azure AD) app credentials
+        required: true
+        scope: extension
+        help_url: https://docs.microsoft.com/en-us/graph/auth-register-app-v2
+        collect:
+          - TEAMS_TENANT_ID
+          - TEAMS_CLIENT_ID
+          - TEAMS_CLIENT_SECRET
+
+    # Step 2: Test Connection
+    - test:
+        title: Test Connection
+        description: Verify your Microsoft Teams credentials are working correctly
+        action: teams.validateChannel
+        successMessage: Successfully connected to Microsoft Teams!
+        required: false
+
+    # Step 3: Getting Started Info
+    - info:
+        title: Setup Complete
+        content: |
+          ## You're all set!
+
+          Your Microsoft Teams integration is now configured. Here's what happens next:
+
+          - **Issue notifications** will be sent to your configured Teams channels
+          - **SLA breach alerts** will notify your team immediately
+          - **Approval requests** can be sent via adaptive cards
+          - You can customize message templates in Extension Settings
+
+          ### Tips
+
+          - Use channels for team notifications
+          - Use direct messages for personal alerts
+          - Enable threading for cleaner conversations
+          - Use adaptive cards for interactive content
+        links:
+          - label: Microsoft Teams Admin Center
+            url: https://admin.teams.microsoft.com/
+            icon: box-arrow-up-right
+          - label: Kiket Documentation
+            url: https://docs.kiket.dev/extensions/teams
+            icon: book
+
   custom_data:
     permissions:
       - module: dev.kiket.ext.teams.deliveries
