@@ -1,29 +1,29 @@
 # frozen_string_literal: true
 
-ENV["RACK_ENV"] = "test"
+ENV['RACK_ENV'] = 'test'
 
-require "bundler/setup"
+require 'bundler/setup'
 Bundler.require(:default, :test)
 
-require "rspec"
-require "webmock/rspec"
+require 'rspec'
+require 'webmock/rspec'
 
-require_relative "../app"
+require_relative '../app'
 
 # Mock context for SDK handler testing
 def build_context(overrides = {})
   events_logged = []
 
   default_secrets = {
-    "TEAMS_TENANT_ID" => "test-tenant-id",
-    "TEAMS_CLIENT_ID" => "test-client-id",
-    "TEAMS_CLIENT_SECRET" => "test-client-secret"
+    'TEAMS_TENANT_ID' => 'test-tenant-id',
+    'TEAMS_CLIENT_ID' => 'test-client-id',
+    'TEAMS_CLIENT_SECRET' => 'test-client-secret'
   }
 
   {
-    auth: { org_id: "test-org-123", user_id: "test-user-456" },
-    secret: ->(key) { default_secrets[key] || ENV[key] },
-    endpoints: double("endpoints", log_event: ->(event, data) { events_logged << { event: event, data: data } }),
+    auth: { org_id: 'test-org-123', user_id: 'test-user-456' },
+    secret: ->(key) { default_secrets[key] || ENV.fetch(key, nil) },
+    endpoints: double('endpoints', log_event: ->(event, data) { events_logged << { event: event, data: data } }),
     events_logged: events_logged
   }.merge(overrides)
 end
@@ -39,7 +39,7 @@ RSpec.configure do |config|
 
   config.shared_context_metadata_behavior = :apply_to_host_groups
   config.filter_run_when_matching :focus
-  config.example_status_persistence_file_path = "spec/examples.txt"
+  config.example_status_persistence_file_path = 'spec/examples.txt'
   config.disable_monkey_patching!
   config.order = :random
   Kernel.srand config.seed
