@@ -4,6 +4,7 @@ extension:
   id: dev.kiket.ext.teams
   name: Microsoft Teams Notifications
   version: 1.0.0
+  api_version: v1
   description: Send notifications via Microsoft Teams channels and chats using Microsoft Graph API
   author: Kiket Team
   homepage: https://github.com/kiket-dev/kiket-ext-teams
